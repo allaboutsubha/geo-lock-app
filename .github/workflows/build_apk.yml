@@ -24,14 +24,8 @@ jobs:
           flutter-version: '3.x'
           channel: 'stable'
 
-      - name: Clean Project
-        run: flutter clean
-
       - name: Get Dependencies
         run: flutter pub get
-
-      - name: Recreate Android Files & Gradle Wrapper
-        run: flutter create . --platforms=android --org com.example
 
       - name: Build APK
         run: flutter build apk --release

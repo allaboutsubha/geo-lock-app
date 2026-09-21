@@ -1,62 +1,49 @@
-package com.example.geo_lock_app
+plugins {
+    id("com.android.application")
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id("dev.flutter.flutter-gradle-plugin")
+}
 
-import android.os.Build
-import android.provider.Settings
-import java.io.File
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
+android {
+    namespace = "com.example.geo_lock_app"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
-class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.example.geolocator/security"
-
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "isDeveloperOptionsEnabled" -> {
-                    result.success(isDeveloperOptionsEnabled())
-                }
-                "isDeviceRooted" -> {
-                    result.success(isDeviceRooted())
-                }
-                else -> {
-                    result.notImplemented()
-                }
-            }
-        }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
-    private fun isDeveloperOptionsEnabled(): Boolean {
-        return Settings.Secure.getInt(
-            this.contentResolver,
-            Settings.Secure.DEVELOPMENT_SETTINGS_ENABLED, 0
-        ) != 0
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.geo_lock_app"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
+        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
+        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
+        // flag during build.
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
-    private fun isDeviceRooted(): Boolean {
-        val buildTags = Build.TAGS
-        if (buildTags != null && buildTags.contains("test-keys")) {
-            return true
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.getByName("debug")
         }
-
-        val paths = arrayOf(
-            "/system/app/Superuser.apk",
-            "/sbin/su",
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/data/local/xbin/su",
-            "/data/local/bin/su",
-            "/system/sd/xbin/su",
-            "/system/bin/failsafe/su",
-            "/data/local/su"
-        )
-        for (path in paths) {
-            if (File(path).exists()) {
-                return true
-            }
-        }
-        return false
     }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+flutter {
+    source = "../.."
 }
