@@ -19,7 +19,9 @@ android {
         applicationId = "com.example.geo_lock_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        
+        minSdk = 21 // ফিক্সড: জিওলোকেটর ও অন্যান্য প্লাগইন সঠিকভাবে কাজ করার জন্য মিনিমাম এসডিকে ২১ করা হলো
+        
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
