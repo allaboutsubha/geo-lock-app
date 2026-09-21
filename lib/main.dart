@@ -32,7 +32,6 @@ class _StepOneScreenState extends State<StepOneScreen> with WidgetsBindingObserv
   @override
   void initState() {
     super.initState();
-    // অ্যাপ লাইফসাইকেল অবজারভার যুক্ত করা হলো (ব্যাকগ্রাউন্ড থেকে অ্যাপে ফিরলে ধরার জন্য)
     WidgetsBinding.instance.addObserver(this);
     _checkGpsStatus();
   }
@@ -43,7 +42,7 @@ class _StepOneScreenState extends State<StepOneScreen> with WidgetsBindingObserv
     super.dispose();
   }
 
-  // ইউজার যখন অন্য অ্যাপ বা সেটিংস থেকে এই অ্যাপে ফিরে আসবে, তখন এটি অটোমেটিক কল হবে
+  // অ্যাপ ব্যাকগ্রাউন্ড বা সেটিংস থেকে ফিরে এলে অটোমেটিক চেক করবে
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -51,18 +50,25 @@ class _StepOneScreenState extends State<StepOneScreen> with WidgetsBindingObserv
     }
   }
 
-  // জিপিএস অন আছে কিনা তা চেক করার ফাংশন
+  // জিপিএস অন আছে কিনা তা চেক করার নিরাপদ ফাংশন
   Future<void> _checkGpsStatus() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    
-    setState(() {
-      _isGpsEnabled = serviceEnabled;
-      if (serviceEnabled) {
-        _statusMessage = 'জিপিএস (GPS) বর্তমানে অন আছে! ✅\nপরবর্তী স্টেপের জন্য প্রস্তুত।';
-      } else {
-        _statusMessage = 'সতর্কতা: আপনার ফোনের জিপিএস (GPS) বন্ধ রয়েছে। ❌';
-      }
-    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      
+      setState(() {
+        _isGpsEnabled = serviceEnabled;
+        if (serviceEnabled) {
+          _statusMessage = 'জিপিএস (GPS) বর্তমানে অন আছে! ✅\nপরবর্তী স্টেপের জন্য প্রস্তুত।';
+        } else {
+          _statusMessage = 'সতর্কতা: আপনার ফোনের জিপিএস (GPS) বন্ধ রয়েছে। ❌';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'লোকেশন চেক করতে সমস্যা হচ্ছে: $e';
+        _isGpsEnabled = false;
+      });
+    }
   }
 
   @override
@@ -103,7 +109,7 @@ class _StepOneScreenState extends State<StepOneScreen> with WidgetsBindingObserv
 
               const SizedBox(height: 15),
               
-              // ম্যানুয়াল স্ট্যাটাস রিফ্রেশ করার বাটন
+              // স্ট্যাটাস রিফ্রেশ করার বাটন
               OutlinedButton.icon(
                 onPressed: _checkGpsStatus,
                 icon: const Icon(Icons.refresh),
