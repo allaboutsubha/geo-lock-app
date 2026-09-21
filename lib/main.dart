@@ -25,14 +25,30 @@ class StepOneScreen extends StatefulWidget {
   State<StepOneScreen> createState() => _StepOneScreenState();
 }
 
-class _StepOneScreenState extends State<StepOneScreen> {
+class _StepOneScreenState extends State<StepOneScreen> with WidgetsBindingObserver {
   String _statusMessage = 'জিপিএস (GPS) স্ট্যাটাস চেক করা হচ্ছে...';
   bool _isGpsEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    // অ্যাপ লাইফসাইকেল অবজারভার যুক্ত করা হলো (ব্যাকগ্রাউন্ড থেকে অ্যাপে ফিরলে ধরার জন্য)
+    WidgetsBinding.instance.addObserver(this);
     _checkGpsStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // ইউজার যখন অন্য অ্যাপ বা সেটিংস থেকে এই অ্যাপে ফিরে আসবে, তখন এটি অটোমেটিক কল হবে
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkGpsStatus();
+    }
   }
 
   // জিপিএস অন আছে কিনা তা চেক করার ফাংশন
@@ -79,7 +95,6 @@ class _StepOneScreenState extends State<StepOneScreen> {
                 ElevatedButton.icon(
                   onPressed: () async {
                     await Geolocator.openLocationSettings();
-                    _checkGpsStatus();
                   },
                   icon: const Icon(Icons.settings),
                   label: const Text('জিপিএস (GPS) অন করুন'),
@@ -88,7 +103,7 @@ class _StepOneScreenState extends State<StepOneScreen> {
 
               const SizedBox(height: 15),
               
-              // স্ট্যাটাস রিফ্রেশ করার বাটন
+              // ম্যানুয়াল স্ট্যাটাস রিফ্রেশ করার বাটন
               OutlinedButton.icon(
                 onPressed: _checkGpsStatus,
                 icon: const Icon(Icons.refresh),
