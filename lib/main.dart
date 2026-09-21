@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 
 void main() {
   runApp(const GeoLockApp());
@@ -32,12 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final double stationLatitude = 22.6502669;
   final double stationLongitude = 88.8669008;
 
-  // প্ল্যাটফর্ম চ্যানেল ডেভেলপার অপশন চেক করার জন্য
+  // নেটিভ কোডের সাথে যোগাযোগের জন্য MethodChannel
   static const platform = MethodChannel('com.example.geolocator/security');
 
-  String _statusMessage = 'সিকিউরিটি ও জিপিএস স্মুথিং যাচাই করা হচ্ছে...';
+  String _statusMessage = 'সিকিউরিটি ও লোকেশন যাচাই করা হচ্ছে...';
   bool _isWithinRange = false;
-  bool _isDeviceSecure = true;
 
   @override
   void initState() {
@@ -45,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _checkSecurityAndSmoothedLocation();
   }
 
-  // ১. ডেভেলপার অপশন অন আছে কিনা চেক করার ফাংশন
+  // ১. নেটিভ কোটলিন থেকে ডেভেলপার অপশন চেক করা
   Future<bool> _isDeveloperOptionsEnabled() async {
     try {
       final bool result = await platform.invokeMethod('isDeveloperOptionsEnabled');
@@ -55,22 +53,29 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ২. জিপিএস জিটার ও ফ্ল্যাকচুয়েশন এড়ানোর জন্য স্মুথিং লজিক (এভারেজিং)
+  // ২. নেটিভ কোটলিন থেকে ফোন রুট করা আছে কিনা চেক করা
+  Future<bool> _isDeviceRooted() async {
+    try {
+      final bool result = await platform.invokeMethod('isDeviceRooted');
+      return result;
+    } on PlatformException catch (_) {
+      return false;
+    }
+  }
+
+  // ৩. মূল সিকিউরিটি এবং জিপিএস স্মুথিং লজিক
   Future<void> _checkSecurityAndSmoothedLocation() async {
     try {
       setState(() {
         _statusMessage = 'ডিভাইস সিকিউরিটি চেক করা হচ্ছে...';
       });
 
-      // ক. রুট বা জেলব্রেক চেক
-      bool isRooted = await FlutterJailbreakDetection.developerMode;
-      bool isJailBroken = await FlutterJailbreakDetection.jailbroken;
-
-      if (isRooted || isJailBroken) {
+      // ক. রুট ডিটেকশন চেক
+      bool isRooted = await _isDeviceRooted();
+      if (isRooted) {
         setState(() {
-          _isDeviceSecure = false;
           _isWithinRange = false;
-          _statusMessage = 'সতর্কতা: আপনার ডিভাইসটি Root বা Jailbroken করা! অ্যাপ বন্ধ থাকবে।';
+          _statusMessage = 'সতর্কতা: আপনার ডিভাইসটি Root করা! অ্যাপটি চলবে না।';
         });
         return;
       }
@@ -79,7 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
       bool devOptionsOn = await _isDeveloperOptionsEnabled();
       if (devOptionsOn) {
         setState(() {
-          _isDeviceSecure = false;
           _isWithinRange = false;
           _statusMessage = 'সতর্কতা: আপনার ফোনে Developer Options অন করা আছে! ক্যামেরা বন্ধ থাকবে।';
         });
@@ -126,7 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
         // মক লোকেশন চেক প্রতি স্যাম্পলে
         if (position.isMocked) {
           setState(() {
-            _isDeviceSecure = false;
             _isWithinRange = false;
             _statusMessage = 'সতর্কতা: ফেক জিপিএস (Mock Location) ধরা পড়েছে!';
           });
@@ -143,7 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
         totalDistance += distance;
         successfulSamples++;
 
-        // স্যাম্পলগুলোর মাঝে সামান্য বিরতি (১ সেকেন্ড)
         if (i < totalSamples - 1) {
           await Future.delayed(const Duration(seconds: 1));
         }
@@ -153,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
       double averageDistance = totalDistance / successfulSamples;
 
       setState(() {
-        _isDeviceSecure = true;
         // চ. কঠোর ৩০ মিটার বাউন্ডারি রুল
         if (averageDistance <= 30.0) {
           _isWithinRange = true;
