@@ -35,14 +35,14 @@ class _StepOneScreenState extends State<StepOneScreen> {
     _checkGpsStatus();
   }
 
-  // জিপিএস অন আছে কিনা চেক করার ফাংশন
+  // জিপিএস অন আছে কিনা তা চেক করার ফাংশন
   Future<void> _checkGpsStatus() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     
     setState(() {
       _isGpsEnabled = serviceEnabled;
       if (serviceEnabled) {
-        _statusMessage = 'জিপিএস (GPS) বর্তমানে অন আছে! ✅\nপরবর্তী স্টেপে যাওয়ার জন্য প্রস্তুত।';
+        _statusMessage = 'জিপিএস (GPS) বর্তমানে অন আছে! ✅\nপরবর্তী স্টেপের জন্য প্রস্তুত।';
       } else {
         _statusMessage = 'সতর্কতা: আপনার ফোনের জিপিএস (GPS) বন্ধ রয়েছে। ❌';
       }
@@ -74,13 +74,11 @@ class _StepOneScreenState extends State<StepOneScreen> {
               ),
               const SizedBox(height: 30),
               
-              // যদি জিপিএস বন্ধ থাকে, তবে এটি অন করার বাটন দেখাবে
+              // জিপিএস বন্ধ থাকলে অন করার সেটিংস বাটন দেখাবে
               if (!_isGpsEnabled)
                 ElevatedButton.icon(
                   onPressed: () async {
-                    // ফোনের লোকেশন সেটিংস ওপেন করবে
                     await Geolocator.openLocationSettings();
-                    // সেটিংস থেকে ফেরার পর আবার চেক করবে
                     _checkGpsStatus();
                   },
                   icon: const Icon(Icons.settings),
@@ -90,7 +88,7 @@ class _StepOneScreenState extends State<StepOneScreen> {
 
               const SizedBox(height: 15),
               
-              // স্ট্যাটাস রিফ্রেশ বা পুনর্বার চেক করার বাটন
+              // স্ট্যাটাস রিফ্রেশ করার বাটন
               OutlinedButton.icon(
                 onPressed: _checkGpsStatus,
                 icon: const Icon(Icons.refresh),
