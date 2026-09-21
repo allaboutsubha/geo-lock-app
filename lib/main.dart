@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 void main() {
@@ -12,207 +11,93 @@ class GeoLockApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Geo Lock App',
+      title: 'Geo Lock Step 1',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomeScreen(),
+      home: const StepOneScreen(),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class StepOneScreen extends StatefulWidget {
+  const StepOneScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<StepOneScreen> createState() => _StepOneScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // বসিরহাট রেলওয়ে স্টেশনের সঠিক ল্যাটিটিউড এবং লংটিউড
-  final double stationLatitude = 22.6502669;
-  final double stationLongitude = 88.8669008;
-
-  // নেটিভ কোডের সাথে যোগাযোগের জন্য MethodChannel
-  static const platform = MethodChannel('com.example.geolocator/security');
-
-  String _statusMessage = 'সিকিউরিটি ও লোকেশন যাচাই করা হচ্ছে...';
-  bool _isWithinRange = false;
+class _StepOneScreenState extends State<StepOneScreen> {
+  String _statusMessage = 'জিপিএস (GPS) স্ট্যাটাস চেক করা হচ্ছে...';
+  bool _isGpsEnabled = false;
 
   @override
   void initState() {
     super.initState();
-    _checkSecurityAndSmoothedLocation();
+    _checkGpsStatus();
   }
 
-  // ১. নেটিভ কোটলিন থেকে ডেভেলপার অপশন চেক করা
-  Future<bool> _isDeveloperOptionsEnabled() async {
-    try {
-      final bool result = await platform.invokeMethod('isDeveloperOptionsEnabled');
-      return result;
-    } on PlatformException catch (_) {
-      return false;
-    }
-  }
-
-  // ২. নেটিভ কোটলিন থেকে ফোন রুট করা আছে কিনা চেক করা
-  Future<bool> _isDeviceRooted() async {
-    try {
-      final bool result = await platform.invokeMethod('isDeviceRooted');
-      return result;
-    } on PlatformException catch (_) {
-      return false;
-    }
-  }
-
-  // ৩. মূল সিকিউরিটি এবং জিপিএস স্মুথিং লজিক
-  Future<void> _checkSecurityAndSmoothedLocation() async {
-    try {
-      setState(() {
-        _statusMessage = 'ডিভাইস সিকিউরিটি চেক করা হচ্ছে...';
-      });
-
-      // ক. রুট ডিটেকশন চেক
-      bool isRooted = await _isDeviceRooted();
-      if (isRooted) {
-        setState(() {
-          _isWithinRange = false;
-          _statusMessage = 'সতর্কতা: আপনার ডিভাইসটি Root করা! অ্যাপটি চলবে না।';
-        });
-        return;
+  // জিপিএস অন আছে কিনা চেক করার ফাংশন
+  Future<void> _checkGpsStatus() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    
+    setState(() {
+      _isGpsEnabled = serviceEnabled;
+      if (serviceEnabled) {
+        _statusMessage = 'জিপিএস (GPS) বর্তমানে অন আছে! ✅\nপরবর্তী স্টেপে যাওয়ার জন্য প্রস্তুত।';
+      } else {
+        _statusMessage = 'সতর্কতা: আপনার ফোনের জিপিএস (GPS) বন্ধ রয়েছে। ❌';
       }
-
-      // খ. ডেভেলপার অপশন চেক
-      bool devOptionsOn = await _isDeveloperOptionsEnabled();
-      if (devOptionsOn) {
-        setState(() {
-          _isWithinRange = false;
-          _statusMessage = 'সতর্কতা: আপনার ফোনে Developer Options অন করা আছে! ক্যামেরা বন্ধ থাকবে।';
-        });
-        return;
-      }
-
-      // গ. জিপিএস সার্ভিস অন আছে কিনা চেক
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        setState(() {
-          _statusMessage = 'দয়া করে আপনার ফোনের জিপিএস (GPS) অন করুন।';
-          _isWithinRange = false;
-        });
-        return;
-      }
-
-      // ঘ. লোকেশন পারমিশন চেক
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          setState(() {
-            _statusMessage = 'লোকেশন পারমিশন বাধ্যতামূলক।';
-            _isWithinRange = false;
-          });
-          return;
-        }
-      }
-
-      setState(() {
-        _statusMessage = 'লোকেশন স্টেবল করা হচ্ছে (জিটার স্মুথিং)...';
-      });
-
-      // ঙ. জিপিএস ফ্ল্যাকচুয়েশন এড়াতে পরপর ৩ বার রিডিং নিয়ে গড় (Average) বের করা
-      double totalDistance = 0.0;
-      int successfulSamples = 0;
-      const int totalSamples = 3;
-
-      for (int i = 0; i < totalSamples; i++) {
-        Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-
-        // মক লোকেশন চেক প্রতি স্যাম্পলে
-        if (position.isMocked) {
-          setState(() {
-            _isWithinRange = false;
-            _statusMessage = 'সতর্কতা: ফেক জিপিএস (Mock Location) ধরা পড়েছে!';
-          });
-          return;
-        }
-
-        double distance = Geolocator.distanceBetween(
-          position.latitude,
-          position.longitude,
-          stationLatitude,
-          stationLongitude,
-        );
-
-        totalDistance += distance;
-        successfulSamples++;
-
-        if (i < totalSamples - 1) {
-          await Future.delayed(const Duration(seconds: 1));
-        }
-      }
-
-      // গড় দূরত্ব হিসাব
-      double averageDistance = totalDistance / successfulSamples;
-
-      setState(() {
-        // চ. কঠোর ৩০ মিটার বাউন্ডারি রুল
-        if (averageDistance <= 30.0) {
-          _isWithinRange = true;
-          _statusMessage = 'নিরাপদ সীমার ভেতরে আছেন (${averageDistance.toStringAsFixed(1)} মিটার)। ক্যামেরা ব্যবহার করতে পারেন।';
-        } else {
-          _isWithinRange = false;
-          _statusMessage = 'আপনি ৩০ মিটার সীমার বাইরে চলে গেছেন (${averageDistance.toStringAsFixed(1)} মিটার)! ক্যামেরা বন্ধ রয়েছে।';
-        }
-      });
-    } catch (e) {
-      setState(() {
-        _statusMessage = 'লোকেশন বা সিকিউরিটি যাচাই করতে সমস্যা হয়েছে: $e';
-        _isWithinRange = false;
-      });
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Geo Lock App - Basirhat'),
+        title: const Text('Step 1: GPS Check'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _isWithinRange ? Icons.lock_open : Icons.lock,
-              size: 80,
-              color: _isWithinRange ? Colors.green : Colors.red,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _statusMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton.icon(
-              onPressed: _isWithinRange
-                  ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ক্যামেরা ওপেন হচ্ছে...')),
-                      );
-                    }
-                  : null,
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('সেলফি তুলুন / ক্যামেরা অন করুন'),
-            ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: _checkSecurityAndSmoothedLocation,
-              icon: const Icon(Icons.refresh),
-              label: const Text('পুনরায় যাচাই করুন'),
-            ),
-          ],
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _isGpsEnabled ? Icons.location_on : Icons.location_off,
+                size: 80,
+                color: _isGpsEnabled ? Colors.green : Colors.red,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _statusMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 30),
+              
+              // যদি জিপিএস বন্ধ থাকে, তবে এটি অন করার বাটন দেখাবে
+              if (!_isGpsEnabled)
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // ফোনের লোকেশন সেটিংস ওপেন করবে
+                    await Geolocator.openLocationSettings();
+                    // সেটিংস থেকে ফেরার পর আবার চেক করবে
+                    _checkGpsStatus();
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('জিপিএস (GPS) অন করুন'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                ),
+
+              const SizedBox(height: 15),
+              
+              // স্ট্যাটাস রিফ্রেশ বা পুনর্বার চেক করার বাটন
+              OutlinedButton.icon(
+                onPressed: _checkGpsStatus,
+                icon: const Icon(Icons.refresh),
+                label: const Text('স্ট্যাটাস রিফ্রেশ করুন'),
+              ),
+            ],
+          ),
         ),
       ),
     );
